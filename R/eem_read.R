@@ -171,6 +171,7 @@ eem_read_shimadzu <- function(data, file){
   attr(res, "is_scatter_corrected") <- FALSE
   attr(res, "is_ife_corrected") <- FALSE
   attr(res, "is_raman_normalized") <- FALSE
+  attr(res, "is_interpolated") <- FALSE
   attr(res, "manufacturer") <- "Shimadzu"
 
   message("Shimadzu files do not contain excitation wavelengths.")
