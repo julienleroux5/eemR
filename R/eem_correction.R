@@ -82,7 +82,6 @@ eem_remove_blank <- function(eem, blank = NA) {
          before Raman normalization.", call. = FALSE)
   }
 
-
   if (is.na(blank)) {
 
     t <- list.group(eem, ~location)
@@ -106,21 +105,17 @@ eem_remove_blank <- function(eem, blank = NA) {
   ## It is a list of eems, then call lapply
   if (.is_eemlist(eem)) {
 
-    blank_names <- c("nano", "miliq", "milliq", "mq", "blank")
-
     # if blank is NA then try to split the eemlist into blank and eems
     if (is.na(blank)) {
-      blank <- eem_extract(eem, blank_names, remove = FALSE, ignore_case = TRUE,
-                           verbose = FALSE)
+
+      blank <- eem_extract_blank(eem)
 
       if (length(blank) != 1 | length(eem) < 1) {
         stop("Cannot find blank for automatic correction.", call. = FALSE)
       }
     }
 
-    res <- lapply(eem,
-                  eem_remove_blank,
-                  blank = blank)
+    res <- lapply(eem, eem_remove_blank, blank = blank)
 
     class(res) <- class(eem)
     return(res)
@@ -130,7 +125,10 @@ eem_remove_blank <- function(eem, blank = NA) {
   # Do the blank subtraction.
   #---------------------------------------------------------------------
 
-  if (is_blank(eem)) {return(eem)} # do not modify blank samples
+  # Do not correct if it was already done
+  if(attributes(eem)$is_blank_corrected) { return(eem) }
+
+  if (is_blank(eem)) { return(eem) } # do not modify blank samples
 
   blank <- unlist(blank, recursive = FALSE)
 
@@ -272,7 +270,8 @@ eem_remove_scattering <- function(eem, type, order = 1, width = 10){
 #' @details The normalization procedure consists in dividing all fluorescence
 #'   intensities by the area (integral) of the Raman peak. The peak is located
 #'   at excitation of 350 nm. (ex = 370) betwen 371 nm. and 428 nm in emission
-#'   (371 <= em <= 428).
+#'   (371 <= em <= 428). Note that the data is interpolated to make sure that
+#'   fluorescence at em 350 exist.
 #'
 #' @references
 #'
@@ -338,13 +337,10 @@ eem_raman_normalisation <- function(eem, blank = NA) {
   ## It is a list of eems, then call lapply
   if(.is_eemlist(eem)){
 
-    blank_names <- c("nano", "miliq", "milliq", "mq", "blank")
-
     # if blank is NA then try to split the eemlist into blank and eems
     if(is.na(blank)){
 
-      blank <- eem_extract(eem, blank_names, remove = FALSE, ignore_case = TRUE,
-                           verbose = FALSE)
+      blank <- eem_extract_blank(eem)
 
       if(length(blank) != 1 | length(eem) < 1){
         stop("Cannot find blank for automatic correction.", call. = FALSE)
@@ -352,9 +348,7 @@ eem_raman_normalisation <- function(eem, blank = NA) {
       }
     }
 
-    res <- lapply(eem,
-                  .eem_raman_normalisation,
-                  blank = blank)
+    res <- lapply(eem, .eem_raman_normalisation, blank = blank)
 
     class(res) <- class(eem)
     return(res)
@@ -364,21 +358,29 @@ eem_raman_normalisation <- function(eem, blank = NA) {
   # Do the normalisation.
   #---------------------------------------------------------------------
 
-  if(is_blank(eem)) {return(eem)} # do not modify blank samples
+  # Do not correct if it was already done
+  if(attributes(eem)$is_raman_normalized) { return(eem) }
+
+  # Do not modify blank samples
+  if(is_blank(eem)) {return(eem)}
 
   blank <- unlist(blank, recursive = FALSE)
 
-  index_ex <- which(blank$ex == 350)
-  index_em <- which(blank$em >= 371 & blank$em <= 428)
+  em <- seq(371, 428, by = 2)
+  ex <- rep(350, length(em))
+  fluo <- pracma::interp2(blank$ex, blank$em, blank$x, ex, em)
 
-  x <- blank$em[index_em]
-  y <- blank$x[index_em, index_ex]
+  # index_ex <- which(blank$ex == 350)
+  # index_em <- which(blank$em >= 371 & blank$em <= 428)
+  #
+  # x <- blank$em[index_em]
+  # y <- blank$x[index_em, index_ex]
 
-  if(any(is.na(x)) | any(is.na(y))){
+  if(any(is.na(em)) | any(is.na(fluo))){
     stop("NA values found in the blank sample. Maybe you removed scattering too soon?", call. = FALSE)
   }
 
-  area <- sum(diff(x) * (y[-length(y)] + y[-1]) / 2)
+  area <- sum(diff(em) * (fluo[-length(fluo)] + fluo[-1]) / 2)
 
   cat("Raman area:", area, "\n")
 
@@ -512,6 +514,9 @@ eem_inner_filter_effect <- function(eem, absorbance, pathlength = 1) {
   #---------------------------------------------------------------------
   # Create the ife matrix
   #---------------------------------------------------------------------
+
+  # Do not correct if it was already done
+  if(attributes(eem)$is_ife_corrected) { return(eem) }
 
   sf <- stats::splinefun(wl, spectra)
 

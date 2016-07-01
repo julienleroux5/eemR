@@ -69,9 +69,8 @@ plot.eemlist <- function(x, which = 1,
 #'
 #' @param object An object of class \code{eem}.
 #' @param ... Extra arguments.
+#' @template template_summary
 #'
-#' @references \url{http://www.sciencedirect.com/science/article/pii/0304420395000623}
-#' @importFrom utils head tail
 #' @export
 #' @examples
 #' file <- system.file("extdata/cary/scans_day_1/", "sample1.csv", package = "eemR")
@@ -83,38 +82,53 @@ summary.eem <- function(object, ...){
 
   stopifnot(class(object) == "eem")
 
-  cat("eem object:", dim(object$x)[1],
-      "x",  dim(object$x)[2],
-      "(", dim(object$x)[1] * dim(object$x)[2], ")", "\n")
+  df <- data.frame(
+    sample = object$sample,
+    ex_min = min(object$ex),
+    ex_max = max(object$ex),
+    em_min = min(object$em),
+    em_max = max(object$em),
+    is_blank_corrected = attr(object, "is_blank_corrected"),
+    is_scatter_corrected = attr(object, "is_scatter_corrected"),
+    is_ife_corrected = attr(object, "is_ife_corrected"),
+    is_raman_normalized = attr(object, "is_raman_normalized"),
+    manufacturer = attr(object, "manufacturer")
+    )
 
-  cat("ex: (", range(object$ex), "nm.)", head(object$ex, 3), "...", tail(object$ex, 3), "\n")
+  return(df)
 
-  cat("em: (", range(object$em), "nm.)", head(object$em, 3), "...", tail(object$em, 3), "\n")
-
-  cat("is_blank_corrected:", attr(object, "is_blank_corrected"), "\n")
-
-  cat("is_scatter_corrected:", attr(object, "is_scatter_corrected"), "\n")
-
-  cat("is_ife_corrected:", attr(object, "is_ife_corrected"), "\n")
-
-  cat("is_raman_normalized:", attr(object, "is_raman_normalized"), "\n")
-
-  cat("manucafturer:", attr(object, "manucafturer"), "\n")
 }
 
-print.eem <- function(object, ...){
-  summary(object)
+print.eem <- function(x, ...){
+  summary(x)
 }
 
-print.eemlist <- function(object, ...){
-  summary(object)
-}
+#' Display summary of an eemlist object
+#'
+#' @param x An object of class \code{eemlist}.
+#' @param ... Extra arguments.
+#' @template template_summary
+#'
+#' @export
+#' @examples
+#' folder <- system.file("extdata/cary", package = "eemR")
+#' eem <- eem_read(folder, recursive = TRUE)
+#'
+#' print(eem)
+print.eemlist <- function(x, ...){
+  stopifnot(class(x) == "eemlist")
 
+  df <- lapply(x, summary)
+  df <- do.call(rbind, df)
+
+  return(df)
+}
 
 #' Display summary of an eemlist object
 #'
 #' @param object An object of class \code{eemlist}.
 #' @param ... Extra arguments.
+#' @template template_summary
 #'
 #' @export
 #' @examples
@@ -126,10 +140,10 @@ summary.eemlist <- function(object, ...){
 
   stopifnot(class(object) == "eemlist")
 
-  cat("eemlist object containing:", length(object), "eem\n\n")
+  df <- lapply(object, summary)
+  df <- do.call(rbind, df)
 
-  cat("First eem object:\n\n")
-  summary.eem(object[[1]])
+  return(df)
 }
 
 
@@ -558,7 +572,8 @@ my_unlist <- function(x){
     output$eem_list = DT::renderDataTable(
       metrics,
       server = FALSE,
-      selection = list(mode = 'single', selected = c(1)),
+      selection = 'single',
+      # selection = list(mode = 'single', target = "row", selected = c(1)),
       options = list(
         autoWidth = TRUE,
         columnDefs = list(list(width = '10px', targets = "_all"))
@@ -568,4 +583,38 @@ my_unlist <- function(x){
   }
 
   shiny::shinyApp(ui, server)
+}
+
+
+#' Extract blank EEM
+#'
+#' @template template_eem
+#' @param average Logical. If TRUE blank EEMs will be averaged
+eem_extract_blank <- function(eem, average = TRUE) {
+
+  blank_names <- c("nano", "miliq", "milliq", "mq", "blank")
+
+  blank <- eem_extract(eem, blank_names,
+                       remove = FALSE,
+                       ignore_case = TRUE,
+                       verbose = FALSE)
+
+  # Average all the blank EEMs
+  if(average) {
+
+    n <- length(blank)
+
+    message("A total of ", n, " blank EEMs will be averaged.")
+
+    X <- Reduce("+", lapply(blank, function(x) x$x))
+    X <- X / n
+
+    blank <- blank[1]
+    blank[[1]]$x <- X
+
+    class(blank) <- "eemlist"
+
+  }
+
+  return(blank)
 }

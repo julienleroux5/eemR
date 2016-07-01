@@ -1,9 +1,20 @@
 # eemR 0.1.4 (unreleased)
 
+- New functions `eem_read_parafac()`, `eem_plot_parafac()` and `eem_fmax_parafac()` to work with restults from PARAFAC models created with the `drEEM` Matlab toolbox. Use `vignette(topic = "parafac", package = "eemR")` for mode details
+
+- Fixing a bug that prevented the interactive plot to work properly. 
+
+- `summary(x)` and `print(x)` now return a data frame containing summarized information on EEMs contained in `x`. See `?summary.eemlist`.
+
+- `eem_raman_normalisation()` and `eem_remove_blank()` will average blank EEMs if more than one are provided or found in the folder (#23).
+
+- `eem_raman_normalisation()`, `eem_remove_blank()` and `eem_inner_filter_effect()` will now verify if the correction has been already performed. If so, an unmodified EEM will be returned.
+
+- `eem_raman_normalisation()` now interpolates blank EEM to ensure that em at 350 and excitation between 371 and 428 exist (#31).
+
 - `eem_remove_blank()` and `eem_raman_normalisation()` will now keep blank samples when automatic correction is used. When automatic correction is used, the *untransformed* blank sample will be keep in the list.
 
 - An error will now occur if trying to perform blank correction after Raman normalization. 
- 
 
 # eemR 0.1.3
 
