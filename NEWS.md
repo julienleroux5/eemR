@@ -2,6 +2,16 @@
 
 - New functions `eem_read_parafac()`, `eem_plot_parafac()` and `eem_fmax_parafac()` to work with restults from PARAFAC models created with the `drEEM` Matlab toolbox. Use `vignette(topic = "parafac", package = "eemR")` for mode details
 
+- `eem_cut()` now remove specified wavelenghts instead of keeping them.
+
+- `eem_cut()` gains an argument `fill_with_na`. If `TRUE` fluorescence at specified wavelengths will be replaced with `NA` instead of being removed.
+
+- File structure is now kept when performing inner-filter effect correction (#35).
+
+- Now using [viridis](https://cran.r-project.org/web/packages/viridis/index.html) space colors for plotting EEMs instead of color jet.
+
+- `eem_remove_scattering()` no longer `tolower` absorbance names and will assume that the provided absorbance spectra match exactly EEM's names.
+
 - Fixing a bug that prevented the interactive plot to work properly. 
 
 - `summary(x)` and `print(x)` now return a data frame containing summarized information on EEMs contained in `x`. See `?summary.eemlist`.

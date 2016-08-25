@@ -1,26 +1,17 @@
 #' @importFrom grDevices colorRampPalette
 #' @importFrom graphics par plot text
+#' @importFrom viridis viridis
 .plot_eem <- function(x, show_peaks, ...){
 
 
-  jet.colors <- colorRampPalette(c("#00007F",
-                                   "blue",
-                                   "#007FFF",
-                                   "cyan",
-                                   "#7FFF7F",
-                                   "yellow",
-                                   "#FF7F00",
-                                   "red",
-                                   "#7F0000"))
-
-  fields::image.plot(y = x$em,
+fields::image.plot(y = x$em,
              x = x$ex,
              z = t(x$x),
              main = paste(x$sample, "\n", attr(x, "manucafturer"), sep = ""),
              xlab = "Excitation (nm.)",
              ylab = "Emission (nm.)",
              legend.lab = "Fluorescence intensity",
-             col = jet.colors(255),
+             col = viridis::viridis(256),
              ...)
 
   if(show_peaks){
@@ -70,7 +61,6 @@ plot.eemlist <- function(x, which = 1,
 #' @param object An object of class \code{eem}.
 #' @param ... Extra arguments.
 #' @template template_summary
-#'
 #' @export
 #' @examples
 #' file <- system.file("extdata/cary/scans_day_1/", "sample1.csv", package = "eemR")
@@ -124,12 +114,39 @@ print.eemlist <- function(x, ...){
   return(df)
 }
 
+
+print.eem <- function(x, ...){
+  summary(x)
+}
+
+#' Display summary of an eemlist object
+#'
+#' @param x An object of class \code{eemlist}.
+#' @param ... Extra arguments.
+#' @template template_summary
+#'
+#' @export
+#' @examples
+#' folder <- system.file("extdata/cary", package = "eemR")
+#' eem <- eem_read(folder, recursive = TRUE)
+#'
+#' print(eem)
+print.eemlist <- function(x, ...){
+  stopifnot(class(x) == "eemlist")
+
+  df <- lapply(x, summary)
+  df <- do.call(rbind, df)
+
+  print(df)
+
+  invisible(df)
+}
+
 #' Display summary of an eemlist object
 #'
 #' @param object An object of class \code{eemlist}.
 #' @param ... Extra arguments.
 #' @template template_summary
-#'
 #' @export
 #' @examples
 #' folder <- system.file("extdata/cary", package = "eemR")
@@ -144,15 +161,18 @@ summary.eemlist <- function(object, ...){
   df <- do.call(rbind, df)
 
   return(df)
+
 }
 
 
 #' Cut emission and/or excitation wavelengths from EEMs
 #'
 #' @template template_eem
-#' @param ex A numeric vector with range of excitation wavelengths to be kept.
-#' @param em A numeric vector with range of emission wavelengths to be kept.
-#'
+#' @param ex A numeric vector of excitation wavelengths to be removed.
+#' @param em A numeric vector of emission wavelengths to be removed.
+#' @param fill_with_na Logical. If TRUE, fluorescence values at specified
+#'   wavelengths will be replaced with NA. If FALSE, these values will be
+#'   removed.
 #' @export
 #' @examples
 #' # Open the fluorescence eem
@@ -162,16 +182,21 @@ summary.eemlist <- function(object, ...){
 #' plot(eem)
 #'
 #' # Cut few excitation wavelengths
-#' eem <- eem_cut(eem, ex = c(220, 300), em = c(325, 500))
+#' eem <- eem_cut(eem, ex = c(220, 225, 230, 230))
 #' plot(eem)
-eem_cut <- function(eem, ex, em){
+#'
+#' eem <- eem_read(file)
+#' eem <- eem_cut(eem, em = 350:400, fill_with_na = TRUE)
+#' plot(eem)
+eem_cut <- function(eem, ex, em, fill_with_na = FALSE){
 
-  stopifnot(.is_eemlist(eem) | .is_eem(eem))
+  stopifnot(
+    .is_eemlist(eem) | .is_eem(eem))
 
   ## It is a list of eems, then call lapply
   if(.is_eemlist(eem)){
 
-    res <- lapply(eem, eem_cut, ex = ex, em = em)
+    res <- lapply(eem, eem_cut, ex = ex, em = em, fill_with_na = fill_with_na)
 
     class(res) <- class(eem)
 
@@ -183,30 +208,46 @@ eem_cut <- function(eem, ex, em){
 
   if(!missing(ex)){
 
-    stopifnot(length(ex) == 2,
-              all(ex <= max(eem$ex) & ex >= min(eem$ex)),
-              ex[1] < ex[2])
+    stopifnot(
+      is.numeric(ex),
+      all(ex >= 0)
+    )
 
-    index <- which(eem$ex >= ex[1] & eem$ex <= ex[2])
+    index <- which(eem$ex %in% ex)
 
+    if (length(index != 0)) {
 
-    eem$ex <- eem$ex[index]
-
-    eem$x <- eem$x[, index]
-
+      if (fill_with_na) {
+        # eem$ex[index] <- NA
+        eem$x[, index] <- NA
+      }
+      else {
+        eem$ex <- eem$ex[-index]
+        eem$x <- eem$x[, -index]
+      }
+    }
   }
 
   if(!missing(em)){
 
-    stopifnot(length(em) == 2,
-              all(em <= max(eem$em) & em >= min(eem$em)),
-              em[1] < em[2])
+    stopifnot(
+      is.numeric(em),
+      all(em >= 0)
+    )
 
-    index <- which(eem$em >= em[1] & eem$em <= em[2])
+    index <- which(eem$em %in% em)
 
-    eem$em <- eem$em[index]
+    if (length(index != 0)) {
 
-    eem$x <- eem$x[index, ]
+      if (fill_with_na) {
+        # eem$em[index] <- NA
+        eem$x[index, ] <- NA
+      }
+      else {
+        eem$em <- eem$em[-index]
+        eem$x <- eem$x[-index, ]
+      }
+    }
 
   }
 
@@ -618,3 +659,4 @@ eem_extract_blank <- function(eem, average = TRUE) {
 
   return(blank)
 }
+

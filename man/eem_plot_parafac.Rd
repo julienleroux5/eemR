@@ -20,6 +20,9 @@ A ggplot2 object
 \description{
 Plot a PARAFAC model
 }
+\details{
+Use \code{vignette("parafac")} for more details.
+}
 \examples{
 f <- system.file("extdata/parafac_model.mat", package = "eemR")
 

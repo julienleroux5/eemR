@@ -26,7 +26,8 @@ Imports:
     purrr,
     rmatio,
     ggplot2,
-    tidyr
+    tidyr,
+    viridis
 RoxygenNote: 5.0.1
 Suggests:
     cdom,

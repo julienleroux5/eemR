@@ -477,7 +477,8 @@ eem_inner_filter_effect <- function(eem, absorbance, pathlength = 1) {
   #---------------------------------------------------------------------
   # Some checks
   #---------------------------------------------------------------------
-  names(absorbance) <- tolower(names(absorbance))
+
+  # names(absorbance) <- tolower(names(absorbance))
 
   if(!any(names(absorbance) == "wavelength")){
 
@@ -542,10 +543,13 @@ eem_inner_filter_effect <- function(eem, absorbance, pathlength = 1) {
   x <- eem$x / ife_correction_factor
 
   ## Construct an eem object.
-  res <- eem(file = eem$sample,
-             x = x,
-             ex = eem$ex,
-             em = eem$em)
+  res <- eem(
+    file = eem$sample,
+    x = x,
+    ex = eem$ex,
+    em = eem$em,
+    location = eem$location
+  )
 
   attributes(res) <- attributes(eem)
   attr(res, "is_ife_corrected") <- TRUE
@@ -562,8 +566,8 @@ is_between <- function(x, a, b) {
 
 is_blank <- function(eem) {
 
-  blank_names <- c("nano", "miliq", "milliq", "mq", "blank")
+  blank_names <- paste("nano", "miliq", "milliq", "mq", "blank", sep = "|")
 
-  any(blank_names %in% eem$sample)
+  grepl(blank_names, eem$sample, ignore.case = TRUE)
 
 }
