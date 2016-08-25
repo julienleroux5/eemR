@@ -106,6 +106,7 @@ print.eem <- function(x, ...){
 #'
 #' print(eem)
 print.eemlist <- function(x, ...){
+
   stopifnot(class(x) == "eemlist")
 
   df <- lapply(x, summary)

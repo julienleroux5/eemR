@@ -15,6 +15,7 @@ vignette: >
 The \pkg{drEEM} MATLAB toolbox [@Murphy2013] offers a convenient way to create PARAFAC model. However, creating publication reading figures from the generated model can be challenging. The \pkg{eemR} package offers two different methods to plot results from a PARAFAC model created with the \pkg{drEEM} MATLAB toolbox. To have access to the different plotting function, one should first open a PARAFAC model contained in a mat file using the `eem_read_parafac()` function as follows:
 
 ```{r}
+library(ggplot2)
 library(eemR)
 
 # Mat file containing the PARAFAC model
@@ -25,19 +26,10 @@ m <- eem_read_parafac(f, object = "mymodel", ncomp = 4)
 ```
 
 
-## Plotting component loadings
+## Plotting a PARAFAC model
 
-T
-
-```{r, fig.width = 6, fig.height = 4, fig.align = "center"}
-p <- eem_plot_parafac(m, type = "loading")
-p
-```
-
-## Plotting 3D components
-
-```{r, fig.width = 6, fig.height = 4, fig.align = "center"}
-p <- eem_plot_parafac(m, type = "component")
+```{r, fig.width = 8, fig.height = 4, fig.align = "center"}
+p <- plot(m, ncol = 2, nrow = 2)
 p
 ```
 

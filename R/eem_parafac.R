@@ -56,127 +56,113 @@ eem_read_parafac <- function(matfile, object, ncomp) {
   loading <- dplyr::bind_rows(ex_loading, em_loading)
   loading <- tidyr::gather(loading,
                            "component",
-                           "fluo",
+                           "fluorescence",
                            starts_with("component"))
+
+  class(loading) <- c("parafac_model", "data.frame")
 
   return(loading)
 
 }
 
+# plot <- function(x){
+#   NextMethod()
+# }
+
 #' Plot a PARAFAC model
 #'
 #' @param x A data frame returned by \code{eem_read_parafac}.
-#' @param type Character. \emph{loading} for the loading plot or
-#'   \emph{component} for the PARAFAC model.
+#' @param nrow Number of rows in the plot grid.
+#' @param ncol Number of columns in the plot grid.
 #' @param ... Additional parameters (not used at the moment).
 #'
 #' @return A ggplot2 object
+#' @import ggplot2
 #' @export
 #'
 #' @details Use \code{vignette("parafac")} for more details.
 #'
 #' @examples
-#' f <- system.file("extdata/parafac_model.mat", package = "eemR")
 #'
+#' library(ggplot2)
+#'
+#' f <- system.file("extdata/parafac_model.mat", package = "eemR")
 #' m1 <- eem_read_parafac(f, object = "mymodel", 4)
 #'
-#' p <- eem_plot_parafac(m1, type = "loading")
+#' p <- plot(m1, nrow = 2, ncol = 2)
 #' p
-#'
-#' p <- eem_plot_parafac(m1, type = "component")
-#' p
+plot.parafac_model <- function(x, nrow, ncol, ...) {
 
-eem_plot_parafac <- function(x, type, ...) {
+  stopifnot(
+    "parafac_model" %in% class(x),
+    is.numeric(nrow),
+    is.numeric(ncol),
+    length(nrow) == 1 & length(ncol) == 1
+  )
 
-  stopifnot(type %in% c("loading", "component"))
+  x <- dplyr::group_by(x, component)
+  x <- tidyr::nest(x)
 
-  # Make labels prettier
-  x$component <- gsub("(component)", "\\1 \\2", x$component)
+  eem_plots <- lapply(x$data, plot_component)
 
-  if (type == "loading") {
-
-    .plot_loading(x)
-
-    } else if (type == "component") {
-
-    .plot_component(x)
-
-  }
-
-}
-
-#' @import ggplot2
-.plot_loading <- function(x) {
-
-  p <- ggplot(x, aes_string(x = "wavelength",
-                            y = "fluo")) +
-    geom_line(aes_string(color = "type"), size = 1) +
-    facet_wrap(~component) +
-    theme_bw() +
-    xlab("Wavelength (nm)") +
-    ylab("Fluorescence") +
-    theme(legend.justification = c(1, 1),  legend.position = c(1,1)) +
-    labs(color = "Loadings") +
-    theme(strip.text.x = element_text(size = 14, face = "bold"))
+  p <- cowplot::plot_grid(plotlist = eem_plots, nrow = nrow, ncol = ncol)
 
   invisible(p)
 
 }
 
-#' @importFrom dplyr group_by_ mutate_
-#' @importFrom tidyr unnest_ nest_
-.plot_component <- function(x) {
+to_mat <- function(df) {
 
-  ll <- group_by_(x, "component")
-  ll <- nest_(ll, "data")
-  ll <- mutate_(ll, res = ~purrr::map(data, mat2vec))
-  ll <- unnest_(ll, "res")
+  # df <- dplyr::filter(df, component == comp)
 
-  jet.colors <- colorRampPalette(c("#00007F",
-                                   "blue",
-                                   "#007FFF",
-                                   "cyan",
-                                   "#7FFF7F",
-                                   "yellow",
-                                   "#FF7F00",
-                                   "red",
-                                   "#7F0000"))
+  x <- outer(df$fluorescence[df$type == "emission"],
+             df$fluorescence[df$type == "excitation"]) %>%
+    as.vector()
 
-  p <-   ggplot(ll, aes_string(x = "ex", y = "em", fill = "fluo")) +
-    geom_raster(interpolate = TRUE) +
-    scale_fill_gradientn(colours = jet.colors(255)) +
+  ex <- unique(df$wavelength[df$type == "excitation"])
+  em <- unique(df$wavelength[df$type == "emission"])
+
+  exx <- rep(ex, each = length(em))
+  emm <- rep(em, length(ex))
+
+  x <- data.frame(ex = exx, em = emm, fluo = x)
+
+}
+
+
+plot_component <- function(df) {
+
+  components <- to_mat(df)
+
+  # Surface plot
+
+  p3d <- components %>%
+    ggplot(aes(x = ex, y = em, fill = fluo)) +
+    geom_raster(interpolate = FALSE) +
+    viridis::scale_fill_viridis(256) +
     scale_x_continuous(expand = c(0, 0)) +
     scale_y_continuous(expand = c(0, 0)) +
+    theme_bw(base_size = 10) +
+    theme(axis.line = element_line(colour = "black")) +
+    theme(panel.grid.major = element_blank()) +
+    theme(panel.grid.minor = element_blank()) +
+    theme(panel.background = element_blank()) +
     xlab("Excitation (nm)") +
     ylab("Emission (nm)") +
-    facet_wrap(~component) +
-    labs(fill = "Fluorescence") +
-    theme(strip.text.x = element_text(size = 14, face = "bold"))
+    theme(legend.position = "none")
+
+  # Loading plot
+  pl <- df %>%
+    ggplot(aes(x = wavelength, y = fluorescence, color = type)) +
+    geom_line() +
+    theme_bw(base_size = 10) +
+    theme(legend.position = "none") +
+    xlab("Wavelength (nm)") +
+    ylab("Loading")
+
+  p <- cowplot::plot_grid(p3d, pl, nrow = 1, align = "hv")
 
   invisible(p)
-
-}
-
-# *************************************************************************
-# Function to tranform the loadings in a convenient format for ggplot2.
-# *************************************************************************
-
-mat2vec <- function(df) {
-
-  ex_wl <- df$wavelength[df$type == "excitation"]
-  em_wl <- df$wavelength[df$type == "emission"]
-  ex_fluo <- df$fluo[df$type == "excitation"]
-  em_fluo <- df$fluo[df$type == "emission"]
-
-  m <- outer(ex_fluo, em_fluo)
-
-  exx <- rep(ex_wl, time = length(em_wl))
-  emm <- rep(em_wl, each = length(ex_wl))
-  mm <- matrix(m, nrow = length(exx))
-
-  df <- data.frame(ex = exx, em = emm, fluo = mm)
-
-  return(df)
 
 }
 
