@@ -16,19 +16,19 @@ The [drEEM](http://www.models.life.ku.dk/dreem) MATLAB toolbox [@Murphy2013] off
 
 ## Exporting PARAFAC models from MATLAB
 
-This tutorial assumes that you are already familiar with the `drEEM` toolbox. If you are not, I suggest you to read this [excellent tutorial](http://www.models.life.ku.dk/sites/default/files/drEEM%20_010_webversion.pdf). Here I am going to pretend that `Test1` is your final model that has been validated.
+This tutorial assumes that you are already familiar with the `drEEM` toolbox. If you are not, I suggest you to read this [excellent tutorial](http://www.models.life.ku.dk/sites/default/files/drEEM%20_010_webversion.pdf). Here I am going to pretend that `mymodel` is your final model that has been validated.
 
 ```matlab
-Test1 = OutlierTest(OriginalData, 1, 1, 7, 'Yes', 'No');
+mymodel = OutlierTest(OriginalData, 1, 1, 7, 'Yes', 'No');
 ```
 
 Once you are happy with your model, you should export it into a `matfile`. From MATLAB, this can be done as follow:
 
 ```matlab
-save('your/path/model.mat', 'Test1');
+save('your/path/parafac_model.mat', 'mymodel');
 ```
 
-This will create a `matfile` named `model.mat` which will contain the `Test1` PARAFAC model.
+This will create a `matfile` named `parafac_model.mat` which will contain the `mymodel` PARAFAC model.
 
 ## Importing PARAFC models
 
@@ -54,7 +54,7 @@ str(m)
 
 ## Plotting a PARAFAC model
 
-Plotting a PARAFAC model is done using the `ggplot2` package using the generic `plot()` function.
+Plotting a PARAFAC model is done using the `ggplot2` package using the generic `plot()` function. The function takes two arguments `ncol` and `nrow` which are used to specify the number or columns and rows of the plot.
 
 ```{r, fig.width = 8, fig.height = 4, fig.align = "center"}
 p <- plot(m, ncol = 2, nrow = 2)
