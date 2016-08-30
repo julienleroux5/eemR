@@ -57,7 +57,7 @@ eem_read_parafac <- function(matfile, object, ncomp) {
     timevar = "component"
   )
 
-  rownames(fmax) <- NULL
+  fmax <- data.frame(fmax)
 
   # Extract loadings
   ex <- unlist(M[[object]][["Ex"]])
@@ -83,7 +83,7 @@ eem_read_parafac <- function(matfile, object, ncomp) {
     timevar = "component"
   )
 
-  rownames(loading) <- NULL
+  loading <- data.frame(loading)
 
   # Bind everything together
   res <- list(loading = loading, fmax = fmax)
