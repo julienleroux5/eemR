@@ -104,34 +104,7 @@ print.eem <- function(x, ...){
 #' folder <- system.file("extdata/cary", package = "eemR")
 #' eem <- eem_read(folder, recursive = TRUE)
 #'
-#' print(eem)
-print.eemlist <- function(x, ...){
-
-  stopifnot(class(x) == "eemlist")
-
-  df <- lapply(x, summary)
-  df <- do.call(rbind, df)
-
-  return(df)
-}
-
-
-print.eem <- function(x, ...){
-  summary(x)
-}
-
-#' Display summary of an eemlist object
-#'
-#' @param x An object of class \code{eemlist}.
-#' @param ... Extra arguments.
-#' @template template_summary
-#'
-#' @export
-#' @examples
-#' folder <- system.file("extdata/cary", package = "eemR")
-#' eem <- eem_read(folder, recursive = TRUE)
-#'
-#' print(eem)
+#' eem
 print.eemlist <- function(x, ...){
   stopifnot(class(x) == "eemlist")
 
@@ -539,19 +512,19 @@ my_unlist <- function(x){
 
 .plot_shiny <- function(eem){
 
-  metrics <- dplyr::left_join(eem_coble_peaks(eem, verbose = FALSE),
-                              eem_biological_index(eem, verbose = FALSE),
-                              by = "sample")
+  metrics <- merge(eem_coble_peaks(eem, verbose = FALSE),
+                   eem_biological_index(eem, verbose = FALSE),
+                   by = "sample")
 
-  metrics <- dplyr::left_join(metrics,
-                              eem_fluorescence_index(eem, verbose = FALSE),
-                              by = "sample")
+  metrics <- merge(metrics,
+                   eem_fluorescence_index(eem, verbose = FALSE),
+                   by = "sample")
 
-  metrics <- dplyr::left_join(metrics,
-                              eem_humification_index(eem, verbose = FALSE),
-                              by = "sample")
+  metrics <- merge(metrics,
+                   eem_humification_index(eem, verbose = FALSE),
+                   by = "sample")
 
-  metrics[,-1] <-round(metrics[,-1], digits = 2)
+  metrics[,-1] <- round(metrics[,-1], digits = 2)
 
   # nl <- vector(mode = "list", length = length(eem_names(eem)))
   # names(nl) <- eem_names(eem)

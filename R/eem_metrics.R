@@ -31,7 +31,7 @@ eem_fluorescence_index <- function(eem, verbose = TRUE){
   if(.is_eemlist(eem)){
 
     res <- lapply(eem, eem_fluorescence_index, verbose = verbose)
-    res <- dplyr::bind_rows(res)
+    res <- do.call(rbind, res)
 
     return(res)
   }
@@ -96,7 +96,7 @@ eem_coble_peaks <- function(eem, verbose = TRUE){
   if(.is_eemlist(eem)){
 
     res <- lapply(eem, eem_coble_peaks, verbose = verbose)
-    res <- dplyr::bind_rows(res)
+    res <- do.call(rbind, res)
 
     return(res)
   }
@@ -172,7 +172,7 @@ eem_humification_index <- function(eem, scale = FALSE, verbose = TRUE) {
   if(.is_eemlist(eem)){
 
     res <- lapply(eem, eem_humification_index, verbose = verbose, scale = scale)
-    res <- dplyr::bind_rows(res)
+    res <- do.call(rbind, res)
 
     return(res)
   }
@@ -243,7 +243,7 @@ eem_biological_index <- function(eem, verbose = TRUE) {
   if(.is_eemlist(eem)){
 
     res <- lapply(eem, eem_biological_index, verbose = verbose)
-    res <- dplyr::bind_rows(res)
+    res <- do.call(rbind, res)
 
     return(res)
   }

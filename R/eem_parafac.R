@@ -4,9 +4,8 @@
 #' @param object Matlab object containing the model (ex. \emph{Test2}).
 #' @param ncomp Numeric. The number of components to extract from \code{object}.
 #'
-#' @import tidyr
 #' @import rmatio
-#' @importFrom dplyr starts_with
+#' @importFrom stats reshape
 #'
 #' @return A data frame with loading.
 #' @export
@@ -23,7 +22,7 @@ eem_read_parafac <- function(matfile, object, ncomp) {
     is.character(object),
     is.numeric(ncomp),
     ncomp > 1
-    )
+  )
 
   # https://github.com/stewid/rmatio
   M <- rmatio::read.mat(matfile)
@@ -40,6 +39,27 @@ eem_read_parafac <- function(matfile, object, ncomp) {
   em_loading <- matrix(unlist(loading[[1]][2]), ncol = ncomp)
   ex_loading <- matrix(unlist(loading[[1]][3]), ncol = ncomp)
 
+  # Extract FMax
+  bmax <- apply(em_loading, 2, max)
+  cmax <- apply(ex_loading, 2, max)
+
+  fmax <- matrix(unlist(loading[[1]][1]), ncol = ncomp)
+  fmax <- t(apply(fmax, 1, function(x) x * (cmax * bmax)))
+
+  fmax <- data.frame(fmax)
+  names(fmax) <- paste0("component", 1:ncol(em_loading))
+
+  fmax <- reshape(
+    fmax,
+    varying = names(fmax)[grepl("^component", names(fmax))],
+    v.names = "fmax",
+    direction = "long",
+    timevar = "component"
+  )
+
+  rownames(fmax) <- NULL
+
+  # Extract loadings
   ex <- unlist(M[[object]][["Ex"]])
   em <- unlist(M[[object]][["Em"]])
 
@@ -53,15 +73,24 @@ eem_read_parafac <- function(matfile, object, ncomp) {
   ex_loading$wavelength <- ex
   ex_loading$type <- "excitation"
 
-  loading <- dplyr::bind_rows(ex_loading, em_loading)
-  loading <- tidyr::gather(loading,
-                           "component",
-                           "fluorescence",
-                           starts_with("component"))
+  loading <- rbind(ex_loading, em_loading)
 
-  class(loading) <- c("parafac_model", "data.frame")
+  loading <- reshape(
+    loading,
+    varying = names(loading)[grepl("^component", names(loading))],
+    v.names = "fluorescence",
+    direction = "long",
+    timevar = "component"
+  )
 
-  return(loading)
+  rownames(loading) <- NULL
+
+  # Bind everything together
+  res <- list(loading = loading, fmax = fmax)
+
+  class(res) <- "parafac_model"
+
+  return(res)
 
 }
 
@@ -78,6 +107,7 @@ eem_read_parafac <- function(matfile, object, ncomp) {
 #'
 #' @return A ggplot2 object
 #' @import ggplot2
+#' @importFrom cowplot plot_grid ggdraw draw_label
 #' @export
 #'
 #' @details Use \code{vignette("parafac")} for more details.
@@ -100,10 +130,7 @@ plot.parafac_model <- function(x, nrow, ncol, ...) {
     length(nrow) == 1 & length(ncol) == 1
   )
 
-  x <- dplyr::group_by(x, component)
-  x <- tidyr::nest(x)
-
-  eem_plots <- lapply(x$data, plot_component)
+  eem_plots <- by(x$loading, x$loading[, "component"], plot_component)
 
   p <- cowplot::plot_grid(plotlist = eem_plots, nrow = nrow, ncol = ncol)
 
@@ -113,11 +140,10 @@ plot.parafac_model <- function(x, nrow, ncol, ...) {
 
 to_mat <- function(df) {
 
-  # df <- dplyr::filter(df, component == comp)
-
   x <- outer(df$fluorescence[df$type == "emission"],
-             df$fluorescence[df$type == "excitation"]) %>%
-    as.vector()
+             df$fluorescence[df$type == "excitation"])
+
+  x <- as.vector(x)
 
   ex <- unique(df$wavelength[df$type == "excitation"])
   em <- unique(df$wavelength[df$type == "emission"])
@@ -136,8 +162,7 @@ plot_component <- function(df) {
 
   # Surface plot
 
-  p3d <- components %>%
-    ggplot(aes(x = ex, y = em, fill = fluo)) +
+  p3d <- ggplot(components, aes_string(x = "ex", y = "em", fill = "fluo")) +
     geom_raster(interpolate = FALSE) +
     viridis::scale_fill_viridis(256) +
     scale_x_continuous(expand = c(0, 0)) +
@@ -152,8 +177,10 @@ plot_component <- function(df) {
     theme(legend.position = "none")
 
   # Loading plot
-  pl <- df %>%
-    ggplot(aes(x = wavelength, y = fluorescence, color = type)) +
+
+  pl <-
+    ggplot(df,
+           aes_string(x = "wavelength", y = "fluorescence", color = "type")) +
     geom_line() +
     theme_bw(base_size = 10) +
     theme(legend.position = "none") +
@@ -161,6 +188,14 @@ plot_component <- function(df) {
     ylab("Loading")
 
   p <- cowplot::plot_grid(p3d, pl, nrow = 1, align = "hv")
+
+  title <- ggdraw() +
+    draw_label(
+      paste("Component", unique(df$component)),
+      fontface = "bold"
+  )
+
+  p <- plot_grid(title, p, ncol = 1, rel_heights = c(0.1, 1))
 
   invisible(p)
 

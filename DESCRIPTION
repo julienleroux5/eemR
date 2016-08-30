@@ -17,17 +17,15 @@ LazyData: TRUE
 Imports:
     stringr,
     fields,
-    dplyr,
     R.matlab,
     pracma,
     readr,
     stats,
     rlist,
-    purrr,
     rmatio,
     ggplot2,
-    tidyr,
-    viridis
+    viridis,
+    cowplot
 RoxygenNote: 5.0.1
 Suggests:
     cdom,
@@ -38,5 +36,7 @@ Suggests:
     plot3D,
     extrafont,
     shiny,
-    DT
+    DT,
+    dplyr,
+    tidyr
 VignetteBuilder: knitr
